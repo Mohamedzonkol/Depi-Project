@@ -5,7 +5,14 @@
 
   tasks:
     - name: Clean apt cache
-      command: apt-get clean
+      apt:
+        update_cache: yes
+        autoclean: yes
+
+    - name: Install Java (OpenJDK)
+      apt:
+        name: openjdk-11-jdk
+        state: present
 
     - name: Remove any existing Jenkins repository configurations
       file:
@@ -14,40 +21,50 @@
 
     - name: Remove any existing Jenkins repository key
       file:
-        path: /usr/share/keyrings/jenkins-keyring.gpg
+        path: /usr/share/keyrings/jenkins-keyring.asc
         state: absent
 
-    - name: Add the Jenkins repository key
-      shell: |
-        curl -fsSL https://pkg.jenkins.io/debian/jenkins.io.key | gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gpg
+    - name: Download Jenkins repository key
+      command: wget -O /usr/share/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+      register: download_key_result
 
-    - name: Debug apt sources list
-      command: cat /etc/apt/sources.list
-      register: sources_list
+    - name: Debug download key result
+      debug:
+        var: download_key_result
 
-   
+    - name: Add Jenkins repository
+      lineinfile:
+        path: /etc/apt/sources.list.d/jenkins.list
+        line: 'deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/'
+        create: yes
 
-    - name: Add the Jenkins repository
-      apt_repository:
-        repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/"
-        state: present
+    - name: Check contents of Jenkins sources list
+      command: cat /etc/apt/sources.list.d/jenkins.list
+      register: cat_sources_list
 
-    - name: Update the apt package index
+    - name: Debug contents of Jenkins sources list
+      debug:
+        var: cat_sources_list
+
+    - name: Update apt cache
       apt:
         update_cache: yes
 
-    - name: Install Java (OpenJDK)
-      apt:
-        name: openjdk-11-jdk
-        state: present
+    - name: List available Jenkins packages
+      command: apt-cache policy jenkins
+      register: apt_cache_policy
+
+    - name: Debug available Jenkins packages
+      debug:
+        var: apt_cache_policy
 
     - name: Install Jenkins
       apt:
         name: jenkins
         state: present
 
-    - name: Ensure Jenkins is started and enabled on boot
+    - name: Start Jenkins service
       systemd:
         name: jenkins
-        enabled: yes
         state: started
+        enabled: yes
