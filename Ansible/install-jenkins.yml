@@ -1,0 +1,53 @@
+---
+- name: Install Jenkins on Ubuntu
+  hosts: jenkins_servers
+  become: yes  # Elevate privileges (equivalent to sudo)
+  
+  tasks:
+    - name: Update APT package manager
+      apt:
+        update_cache: yes
+    
+    - name: Install Java (Jenkins requires Java)
+      apt:
+        name: openjdk-11-jdk
+        state: present
+    
+    - name: Add Jenkins repository key
+      apt_key:
+        url: https://pkg.jenkins.io/debian/jenkins.io.key
+        state: present
+    
+    - name: Add Jenkins repository
+      apt_repository:
+        repo: "deb http://pkg.jenkins.io/debian-stable binary/"
+        state: present
+    
+    - name: Update APT package manager after adding Jenkins repository
+      apt:
+        update_cache: yes
+    
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+    
+    - name: Ensure Jenkins is started and enabled on boot
+      systemd:
+        name: jenkins
+        state: started
+        enabled: true
+
+    - name: Open port 8080 (default Jenkins port)
+      ufw:
+        rule: allow
+        port: '8080'
+        proto: tcp
+
+    - name: Get initial Jenkins admin password
+      shell: "cat /var/lib/jenkins/secrets/initialAdminPassword"
+      register: jenkins_password
+
+    - name: Show initial Jenkins admin password
+      debug:
+        msg: "Initial Jenkins admin password is {{ jenkins_password.stdout }}"
