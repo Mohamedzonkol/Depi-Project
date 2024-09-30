@@ -1,6 +1,6 @@
 ---
 - name: Set up and configure the VM
-  hosts: all
+  hosts: local
   become: yes 
   tasks:
     - name: Update package lists

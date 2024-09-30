@@ -1,6 +1,6 @@
 ---
 - name: Install Docker on a Linux machine
-  hosts: all
+  hosts: local
   become: yes  # Ensures the commands are run with elevated privileges
   tasks:
     - name: Update apt package index
@@ -34,9 +34,13 @@
         state: present
 
     - name: Install Docker Compose (optional, remove this task if not needed)
-      get_url:
-        url: https://github.com/docker/compose/releases/download/1.29.2/docker-compose-`uname -s`-`uname -m`
-        dest: /usr/local/bin/docker-compose
+      shell: curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+      args:
+        creates: /usr/local/bin/docker-compose
+
+    - name: Set permissions for Docker Compose
+      file:
+        path: /usr/local/bin/docker-compose
         mode: '0755'
 
     - name: Ensure Docker service is enabled and running
@@ -47,7 +51,7 @@
 
     - name: Add current user to the docker group
       user:
-        name: "{{ ansible_user }}"
+        name: "{{ ansible_user_id }}"
         groups: docker
         append: yes
 

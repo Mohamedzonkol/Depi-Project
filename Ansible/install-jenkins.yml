@@ -1,53 +1,53 @@
 ---
-- name: Install Jenkins on Ubuntu
-  hosts: jenkins_servers
-  become: yes  # Elevate privileges (equivalent to sudo)
-  
+- name: Install Jenkins
+  hosts: local
+  become: yes
+
   tasks:
-    - name: Update APT package manager
+    - name: Clean apt cache
+      command: apt-get clean
+
+    - name: Remove any existing Jenkins repository configurations
+      file:
+        path: /etc/apt/sources.list.d/jenkins.list
+        state: absent
+
+    - name: Remove any existing Jenkins repository key
+      file:
+        path: /usr/share/keyrings/jenkins-keyring.gpg
+        state: absent
+
+    - name: Add the Jenkins repository key
+      shell: |
+        curl -fsSL https://pkg.jenkins.io/debian/jenkins.io.key | gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gpg
+
+    - name: Debug apt sources list
+      command: cat /etc/apt/sources.list
+      register: sources_list
+
+   
+
+    - name: Add the Jenkins repository
+      apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/"
+        state: present
+
+    - name: Update the apt package index
       apt:
         update_cache: yes
-    
-    - name: Install Java (Jenkins requires Java)
+
+    - name: Install Java (OpenJDK)
       apt:
         name: openjdk-11-jdk
         state: present
-    
-    - name: Add Jenkins repository key
-      apt_key:
-        url: https://pkg.jenkins.io/debian/jenkins.io.key
-        state: present
-    
-    - name: Add Jenkins repository
-      apt_repository:
-        repo: "deb http://pkg.jenkins.io/debian-stable binary/"
-        state: present
-    
-    - name: Update APT package manager after adding Jenkins repository
-      apt:
-        update_cache: yes
-    
+
     - name: Install Jenkins
       apt:
         name: jenkins
         state: present
-    
+
     - name: Ensure Jenkins is started and enabled on boot
       systemd:
         name: jenkins
+        enabled: yes
         state: started
-        enabled: true
-
-    - name: Open port 8080 (default Jenkins port)
-      ufw:
-        rule: allow
-        port: '8080'
-        proto: tcp
-
-    - name: Get initial Jenkins admin password
-      shell: "cat /var/lib/jenkins/secrets/initialAdminPassword"
-      register: jenkins_password
-
-    - name: Show initial Jenkins admin password
-      debug:
-        msg: "Initial Jenkins admin password is {{ jenkins_password.stdout }}"

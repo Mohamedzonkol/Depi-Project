@@ -1,0 +1,117 @@
+---
+- name: Install Nexus Repository Manager
+  hosts: local
+  become: yes
+
+  tasks:
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+
+    - name: Install Java (OpenJDK)
+      apt:
+        name: openjdk-11-jdk
+        state: present
+
+    - name: Create nexus user
+      user:
+        name: nexus
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Verify Nexus tarball
+      stat:
+        path: /tmp/nexus.tar.gz
+      register: nexus_tarball
+
+    - name: Print Nexus tarball stats
+      debug:
+        var: nexus_tarball
+
+    - name: Check if Nexus tarball is valid
+      command: file /tmp/nexus.tar.gz
+      register: file_check
+      when: nexus_tarball.stat.exists
+
+    - name: Print file check result
+      debug:
+        var: file_check
+      when: nexus_tarball.stat.exists
+
+    - name: Extract Nexus using unarchive
+      unarchive:
+        src: /tmp/nexus.tar.gz
+        dest: /opt
+        remote_src: yes
+      register: unarchive_result
+      when: nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
+      ignore_errors: yes
+
+    - name: Extract Nexus using tar command if unarchive fails
+      command: tar -xzf /tmp/nexus.tar.gz -C /opt
+      when: unarchive_result is failed and nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
+
+    - name: Rename Nexus directory
+      command:  mv /opt/nexus-3.72.0-04 /opt/nexus
+      when: nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
+
+    - name: Change ownership of Nexus directory
+      file:
+        path: /opt/nexus
+        state: directory
+        owner: nexus
+        group: nexus
+        recurse: yes
+      when: nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
+
+    - name: Change ownership of sonatype-work directory
+      file:
+        path: /opt/sonatype-work
+        state: directory
+        owner: nexus
+        group: nexus
+        recurse: yes
+      when: nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
+
+    - name: Configure Nexus to run as nexus user
+      lineinfile:
+        path: /opt/nexus/bin/nexus.rc
+        line: 'run_as_user="nexus"'
+        create: yes
+      when: nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
+
+    - name: Create Nexus service file
+      copy:
+        dest: /etc/systemd/system/nexus.service
+        content: |
+          [Unit]
+          Description=nexus service
+          After=network.target
+
+          [Service]
+          Type=forking
+          LimitNOFILE=65536
+          ExecStart=/opt/nexus/bin/nexus start
+          ExecStop=/opt/nexus/bin/nexus stop
+          User=nexus
+          Restart=on-abort
+
+          [Install]
+          WantedBy=multi-user.target
+      when: nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
+
+    - name: Reload systemd daemon
+      command: systemctl daemon-reload
+      when: nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
+
+    - name: Enable Nexus service
+      systemd:
+        name: nexus
+        enabled: yes
+      when: nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
+
+    - name: Start Nexus service
+      systemd:
+        name: nexus
+        state: started
+      when: nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
