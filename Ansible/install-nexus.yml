@@ -19,6 +19,20 @@
         shell: /bin/bash
         create_home: yes
 
+    - name: Ensure /tmp directory exists
+      file:
+        path: /tmp
+        state: directory
+
+    - name: Download Nexus tarball
+      get_url:
+        url: https://download.sonatype.com/nexus/3/latest-unix.tar.gz
+        dest: /tmp/nexus.tar.gz
+      register: download_result
+      retries: 5
+      delay: 10
+      until: download_result is succeeded
+
     - name: Verify Nexus tarball
       stat:
         path: /tmp/nexus.tar.gz
@@ -51,8 +65,16 @@
       command: tar -xzf /tmp/nexus.tar.gz -C /opt
       when: unarchive_result is failed and nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
 
+    - name: List contents of /opt directory
+      command: ls -l /opt
+      register: opt_contents
+
+    - name: Print contents of /opt directory
+      debug:
+        var: opt_contents
+
     - name: Rename Nexus directory
-      command:  mv /opt/nexus-3.72.0-04 /opt/nexus
+      command: mv /opt/nexus-3.72.0-04 /opt/nexus
       when: nexus_tarball.stat.exists and file_check.stdout.find('gzip compressed data') != -1
 
     - name: Change ownership of Nexus directory
