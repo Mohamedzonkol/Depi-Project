@@ -1,0 +1,12 @@
+- name: SonarQube Setup Playbook
+  hosts: localhost
+  gather_facts: true
+  become: true
+  vars_files:
+    - ./roles/sonarqube_setup/vars/main.yml
+  roles:
+    - sonarqube_setup
+  handlers:
+    - import_tasks: ./roles/sonarqube_setup/handlers/main.yml
+
+
