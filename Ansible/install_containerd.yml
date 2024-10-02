@@ -1,0 +1,65 @@
+---
+- name: Install containerd on VM
+  hosts: vm
+  become: yes
+  tasks:
+
+    - name: Load containerd kernel modules
+      copy:
+        dest: /etc/modules-load.d/k8s.conf
+        content: |
+          overlay
+          br_netfilter
+
+    - name: Load kernel modules
+      command: modprobe {{ item }}
+      with_items:
+        - overlay
+        - br_netfilter
+
+    - name: Configure sysctl for Kubernetes
+      copy:
+        dest: /etc/sysctl.d/k8s.conf
+        content: |
+          net.bridge.bridge-nf-call-iptables  = 1
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.ipv4.ip_forward                 = 1
+
+    - name: Apply sysctl parameters
+      command: sysctl --system
+
+    - name: Ensure kernel modules are loaded
+      shell: lsmod | grep {{ item }}
+      with_items:
+        - br_netfilter
+        - overlay
+      register: module_check
+      ignore_errors: yes
+
+    - name: Verify sysctl settings
+      command: sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
+      register: sysctl_check
+
+    - name: Update apt package list
+      apt:
+        update_cache: yes
+
+    - name: Install containerd
+      apt:
+        name: containerd
+        state: present
+
+    - name: Create containerd config directory
+      file:
+        path: /etc/containerd
+        state: directory
+        mode: '0755'
+
+    - name: Generate default containerd config
+      shell: containerd config default | tee /etc/containerd/config.toml
+
+    - name: Restart containerd service
+      systemd:
+        name: containerd
+        state: restarted
+        enabled: yes
