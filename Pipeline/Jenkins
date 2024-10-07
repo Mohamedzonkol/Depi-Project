@@ -1,0 +1,103 @@
+pipeline {
+    agent any
+    tools {
+        jdk 'jdk-17'
+        maven 'maven-3'
+    }
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+
+    stages {
+        stage('Checkout the Project') {
+            steps {
+                git branch: 'main', credentialsId: 'github_token', url: 'https://github.com/Mohamedzonkol/Jenkins-Pipeline.git'
+            }
+        }
+
+        stage('Compile the Source Code') {
+            steps {
+                sh 'mvn compile'
+            }
+        }
+
+        stage('Run Unit Tests') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage('Check Vulnerabilities Using Trivy (Filesystem)') {
+            steps {
+                sh 'trivy fs --format table -o trivy-fs-output.html .'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    sh '''
+                    $SCANNER_HOME/bin/sonar-scanner \
+                    -Dsonar.projectName=DEPI-PROJECT \
+                    -Dsonar.projectKey=projecttest \
+                    -Dsonar.java.binaries=.
+                    '''
+                }
+            }
+        }
+
+        stage('Wait for Quality Gate') {
+            steps {
+                script {
+                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
+                }
+            }
+        }
+
+        stage('Package Application') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'DockerHub', toolName: 'docker') {
+                        sh 'docker build -t mohamedelsayed7/petclinic-project:latest .'
+                    }
+                }
+            }
+        }
+
+        stage('Docker Image Scanning with Trivy') {
+            steps {
+                sh 'trivy image --format table -o trivy-image-output.html mohamedelsayed7/petclinic-project'
+            }
+        }
+
+        stage('Push Docker Image to Docker Hub') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'DockerHub', toolName: 'docker') {
+                        sh 'docker push mohamedelsayed7/petclinic-project:latest'
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'trivy-fs-output.html, trivy-image-output.html', allowEmptyArchive: true
+            publishHTML(target: [
+                allowMissing: false,
+                alwaysLinkToLastBuild: false,
+                keepAll: true,
+                reportDir: '.',
+                reportFiles: 'trivy-fs-output.html, trivy-image-output.html',
+                reportName: 'Trivy Vulnerability Reports'
+            ])
+        }
+    }
+}
