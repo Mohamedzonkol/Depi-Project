@@ -1,6 +1,6 @@
 ---
 - name: Install containerd on VM
-  hosts: vm
+  hosts: worker-2
   become: yes
   tasks:
 
