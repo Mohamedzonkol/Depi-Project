@@ -30,6 +30,6 @@ containers)
     M --> N{Prometheus for monitoring and Grafana for data visualization}
     N --> O(Centralized logs stored using ELK Stack optional)
     N --> P(Grafana visualizes metrics)
-    O --> Q(End)
+    O --> Q
     Q --> A
     ```
