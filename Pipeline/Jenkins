@@ -95,6 +95,16 @@ pipeline {
             }
         }
     }
+stage ('Deploy the Docker Image to k8s Cluster') {
+                     steps {
+                     withKubeConfig(caCertificate: '', clusterName: 'kubernetes', contextName: '', credentialsId: 'k8s-cred', namespace: 'depi', restrictKubeConfigAccess: false, serverUrl: 'https://20.106.221.225:6443') {
+                     sh '''kubectl apply -f deployment.yml
+                     	   kubectl apply -f service.yml
+                     '''
+                    }
+                 }
+             }
+         
 
     post {
         always {
