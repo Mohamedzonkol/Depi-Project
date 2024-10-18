@@ -1,3 +1,6 @@
+```mermaid 
+
+
 sequenceDiagram
     participant Developer
     participant GitHub
@@ -39,3 +42,6 @@ sequenceDiagram
 
     Note over Jenkins, Trivy: Security Scanning
     Note over Jenkins, SonarQube: Code Quality Analysis
+
+
+```
