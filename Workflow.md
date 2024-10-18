@@ -31,5 +31,4 @@ containers)
     N --> O(Centralized logs stored using ELK Stack optional)
     N --> P(Grafana visualizes metrics)
     O --> Q(End)
-    Q --> A(Start)
     ```
