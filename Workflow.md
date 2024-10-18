@@ -16,19 +16,14 @@ flowchart LR
     Kubernetes Master
     and Worker Nodes)
     H --> I(Ansible configures
-VMs, installs
-necessary packages,
-and configures
-Kubernetes)
+    VMs, installs necessary packages, and configures Kubernetes)
     I --> J{Kubernetes Master Node}
-    J -->|Schedules workloads on Worker Nodes| L(Kubernetes Worker
-Nodes running Spring
-PetClinic in Docker
-containers)
+    J -->|Schedules workloads on Worker Nodes| L(Kubernetes Worker Nodes running Spring PetClinic in Docker containers)
     J -->|Controls Kubernetes Worker Nodes| L
     L --> M(Nginx serves as reverse proxy to Kubernetes cluster)
     M --> N{Prometheus for monitoring and Grafana for data visualization}
     N --> O(Centralized logs stored using ELK Stack optional)
     N --> P(Grafana visualizes metrics)
     O --> Q(End)
+    Q-->A
     ```
