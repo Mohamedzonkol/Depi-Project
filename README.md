@@ -104,6 +104,13 @@ The project uses the following 6 VMs:
    - Run Trivy scans on the Security VM to analyze Docker images.
    - Integrate SonarQube with Jenkins to automatically perform code quality checks.
 
+
+
+
+
+## Explaination video :
+[Link](https://drive.google.com/file/d/1EmyZ3OBthkOdHP596KljW3tiwdnritWk/view?usp=drive_link)
+
 ## Conclusion
 
 This DevOps project streamlines the deployment and monitoring of the Java Spring Pet Clinic application using Kubernetes, Jenkins, Prometheus, Grafana, Trivy, and SonarQube. The use of a CI/CD pipeline, combined with automated security analysis and monitoring, ensures high availability, security, and performance of the application.
